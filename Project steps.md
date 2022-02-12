@@ -38,3 +38,61 @@ img
 
 - Use vgcreate utility to add all 3 PVs to a volume group (VG). Name the VG webdata-vg
 *sudo vgcreate webdata-vg /dev/xvdh1 /dev/xvdg1 /dev/xvdf1*
+
+- Verify that your VG has been created successfully by running *sudo vgs*
+img
+
+- Use lvcreate utility to create 2 logical volumes. apps-lv (Use half of the PV size), and logs-lv Use the remaining space of the PV size. 
+*sudo lvcreate -n apps-lv -L 14G webdata-vg*
+*sudo lvcreate -n logs-lv -L 14G webdata-vg*
+img
+
+- Verify that your Logical Volume has been created successfully by running sudo lvs
+img
+
+- Verify the entire setup
+*sudo vgdisplay -v* #view complete setup - VG, PV, and LV
+img
+
+*sudo lsblk*
+
+- Use mkfs.ext4 to format the logical volumes with ext4 filesystem
+*sudo mkfs -t ext4 /dev/webdata-vg/apps-lv*
+*sudo mkfs -t ext4 /dev/webdata-vg/logs-lv*
+img
+
+- Create /var/www/html directory to store website files
+*sudo mkdir -p /var/www/html*
+
+- Create /home/recovery/logs to store backup of log data
+*sudo mkdir -p /home/recovery/logs*
+
+- Mount /var/www/html on apps-lv logical volume
+*sudo mount /dev/webdata-vg/apps-lv /var/www/html/*
+
+- Use rsync utility to backup all the files in the log directory /var/log into /home/recovery/logs (This is required before mounting the file system)
+*sudo rsync -av /var/log/. /home/recovery/logs/*
+
+- Mount /var/log on logs-lv logical volume. (Note that all the existing data on /var/log will be deleted. 
+*sudo mount /dev/webdata-vg/logs-lv /var/log*
+
+- Restore log files back into /var/log directory
+*sudo rsync -av /home/recovery/logs/. /var/log*
+
+- Update /etc/fstab file so that the mount configuration will persist after restart of the server.
+The UUID of the device will be used to update the /etc/fstab file
+*sudo blkid*
+img
+
+*sudo vi /etc/fstab*
+img
+
+- Test the configuration and reload the daemon
+ *sudo mount -a*
+ *sudo systemctl daemon-reload*
+ 
+ - Verify your setup by running df -h, 
+ img
+ 
+ ## Step 2 — Prepare the Database Server
+ 
